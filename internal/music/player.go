@@ -18,8 +18,9 @@ type Player struct {
 }
 
 type playback struct {
-	finish chan struct{}
-	closed chan struct{}
+	finish     chan struct{}
+	closed     chan struct{}
+	superseded bool
 }
 
 func NewPlayer(pieces []domain.QinPiece) *Player {
@@ -59,17 +60,32 @@ func (p *Player) Play(done func(string)) error {
 		p.mu.Unlock()
 		return ErrNoSelection
 	}
-	if p.active != nil {
-		close(p.active.finish)
+	previous := p.active
+	if previous != nil {
+		// A previous playback is still active: mark it superseded so its
+		// done callback is suppressed, then wait for it to settle before
+		// starting the new track.
+		previous.superseded = true
+		close(previous.finish)
 	}
 	active := &playback{finish: make(chan struct{}), closed: make(chan struct{})}
 	p.active = active
-	title := p.current.Title
 	p.mu.Unlock()
+	if previous != nil {
+		<-previous.closed
+	}
 	go func() {
-		defer close(active.closed)
 		<-active.finish
-		defer done(title)
+		p.mu.Lock()
+		current := p.current
+		superseded := active.superseded
+		p.mu.Unlock()
+		if superseded || current.ID == "" {
+			close(active.closed)
+			return
+		}
+		done(current.Title)
+		close(active.closed)
 	}()
 	return nil
 }
@@ -78,9 +94,13 @@ func (p *Player) Finish() {
 	p.mu.Lock()
 	active := p.active
 	p.active = nil
+	if active != nil {
+		// Stopping the current track is not a supersession: the done
+		// callback still fires with the current title.
+		close(active.finish)
+	}
 	p.mu.Unlock()
 	if active != nil {
-		close(active.finish)
 		<-active.closed
 	}
 }
