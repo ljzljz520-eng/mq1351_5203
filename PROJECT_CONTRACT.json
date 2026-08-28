@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "metrics": {
+    "production_loc": 2395,
+    "production_files": 36,
+    "production_packages": 8,
+    "test_files": 9,
+    "production_functions": 216,
+    "decision_points": 293
+  },
+  "persistence": {
+    "module": "modernc.org/sqlite",
+    "entities": [
+      "ExperienceSubmission",
+      "QinSchool",
+      "QinPiece",
+      "Notation"
+    ],
+    "reopen_test": "TestPersistenceSurvivesReopen"
+  },
+  "workflows": [
+    {
+      "steps": [
+        "接收首页请求",
+        "读取琴派名曲与传承资料",
+        "渲染下拉导航图片墙和表格",
+        "返回专题页面"
+      ],
+      "test": "TestBrowseCultureWorkflow"
+    },
+    {
+      "steps": [
+        "获取固定曲目目录",
+        "校验并切换当前曲目",
+        "启动本地音频占位播放",
+        "结束播放并展示当前标题"
+      ],
+      "test": "TestMusicTitleFollowsSelection"
+    },
+    {
+      "steps": [
+        "接收体验表单",
+        "校验访客字段",
+        "事务性保存提交状态",
+        "关闭重开存储后读取结果"
+      ],
+      "test": "TestPersistenceSurvivesReopen"
+    }
+  ]
+}
